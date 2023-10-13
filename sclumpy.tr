@@ -1,0 +1,236 @@
+.TH SCLUMPY 1 2023 "Pierre Colin"
+.SH NAME
+sclumpy
+\(em qlumpy rewrite for Sven Co-op
+.SH SYNOPSIS
+.LP
+.nf
+sclumpy \fB[\fR-8\fB] [\fR-p \fIpath\fB] [\fIpath\fB]\fR
+.P
+sclumpy -s \fIpath\fR
+.fi
+.SH DESCRIPTION
+The
+.IR sclumpy
+utility helps create WAD files for games running on the GoldSrc engine by
+parsing Lumpy scripts.
+.SH OPTIONS
+The
+.IR sclumpy
+utility conforms to the Base Definitions volume of POSIX.1\(hy2017,
+.IR "Section 12.2" ", " "Utility Syntax Guidelines".
+.P
+The following options are supported:
+.IP "\fB\-8\fP" 10
+Write an 8-bit WAD2 file instead of a 16-bit WAD3 one.
+.IP "\fB\-p\ \fIpath\fR" 10
+Set the project path to
+.IR "path" .
+Used when expanding paths in Lumpy scripts.
+.IP "\fB\-s\fP" 10
+Creates a spray instead of running a Lumpy script. See
+.IR "EXTENDED DESCRIPTION" ", " "Spray Creation"
+for more details.
+.SH OPERANDS
+If the
+.BR \-s
+option was passed, then the
+.IR path
+operand denotes a path to a bitmap image file. If the
+.BR \-s
+option was not passed, then the
+.IR path
+operand denotes a path to a text file containing a Lumpy script. If the
+.IR path
+operand is absent or equal to
+.BR '\-' ,
+then the Lumpy script is read from the standard input.
+.SH STDIN
+If the
+.BR \-s
+option was not passed and the
+.IR path
+operand is either absent or equal to
+.BR '\-' ,
+then the Lumpy script is read from the standard input.
+.SH "INPUT FILES"
+If the
+.BR \-s
+option was passed, then the input file shall be a Lumpy script. Otherwise, it
+shall be a bitmap image.
+.SH "ENVIRONMENT VARIABLES"
+The following environment variables affect the execution of
+.IR sclumpy .
+All the environment variables other than
+.IR QPROJECT
+are intended to be used as specified in POSIX.1\(hy2017,
+.IR "Section 8.2" ", " "Internationalization Variables" .
+.IP "\fILANG\fP" 10
+Provide a default value for the internationalization variables that are unset.
+.IP "\fILC_ALL\fP" 10
+If set to a non-empty string, override all other internationalization variables.
+.IP "\fILC_CTYPE\fP" 10
+Determine the locale to use for classifying characters according to their case
+and converting characters between cases.
+.IP "\fILC_NUMERIC\fP" 10
+Determine the locale to use for reading and writing numeric values.
+.IP "\fIQPROJECT\fP" 10
+Specify the default project path if the
+.BR \-p
+option was not passed.
+.SH "ASYNCHRONOUS EVENTS"
+Default.
+.SH STDOUT
+The standard output is only used for logging purposes.
+.SH "OUTPUT FILES"
+If the
+.BR \-s
+option was passed, then a WAD file called
+.IR tempdecal.wad
+is created. Otherwise, the output file is given by the Lumpy script.
+.SH "EXTENDED DESCRIPTION"
+.SS "Lumpy Script Syntax"
+.P
+Lumpy scripts are text streams written in a context-free deterministic
+language. In Lumpy scripts, tokens are separated by whitespace characters.
+Each source line maps to a logical line with one exception: if a new-line
+character is immediately preceded by a
+.BR \e
+character, then the next source line is part of the current logical line. This
+may happen in the middle of a token. Everything inbetween two
+.BR \(dq
+characters will parse as one token with the exception that
+.BR \e
+at the end of a source line will be skipped along with the line break it
+precedes.
+
+.P
+Names of lumps and files are case sensitive, but names of directives starting
+with the
+.BR $
+character are not. Lump names may be at most 15 characters long.
+.P
+Lumpy scripts consist of sequences of directives among the following.
+.IP "\fB$dest\fR \fIpath\fR" 10
+Set the destination path to
+.IR path .
+The file created will be a WAD file containing all the lumps that the Lumpy
+script builds. If
+.BR $singledest
+was previously passed, the Lumpy script is ill formed.
+.IP "\fB$singledest\fR \fIpath\fR" 10
+Set the destination path to the directory
+.IR path .
+Each lump will be placed into separate LMP files under that directory. If
+.BR $dest
+was previously passed, the Lumpy script is ill formed.
+.IP "\fB$load\fR \fIpath\fR" 10
+Load an image from an Dpaint/PSP LBM file.
+.IP "\fB$loadbmp\fR \fIpath\fR" 10
+Load an image from a BMP file.
+.IP "\fB$include\fR \fIpath\fR" 10
+Recursively open and execute the Lumpy script located in
+.IR path .
+At most 24 Lumpy scripts may be open at the same time. If cyclical inculsions
+are detected, the execution stops before that limit is reached. This directive
+is parsed at token stage, meaning that it may be invoked in the arguments of
+another directive. A consequence of that is that Lumpy scripts cannot treat
+lumps or files named
+.IR $include .
+.IP "\fIname\fR \fItype\fR \fB[\fRarguments\fB]\fR" 10
+Create a lump named
+.IR name
+from the last loaded image, using the method specified by
+.IR type
+with the given
+arguments. If neither
+.BR $dest
+nor
+.BR $singledest
+was previously passed, or if no image has been loaded, the Lumpy script is ill
+formed.
+.P
+When creating lumps, the following types are supported:
+.IP "\fBcolormap\fR \fIlevels\fR \fIbrights\fR" 10
+Create a color map from the palette.
+.IP "\fBcolormap2\fR \fIranges\fR \fIlevels\fR \fIbrights\fR" 10
+Create a color map from the palette.
+.IP "\fBmiptex\fR \fIx\fR \fIy\fR \fIwidth\fR \fIheight\fR" 10
+Create a texture with mipmaps automatically generated from the image data. The
+arguments are all 32-bit integers. The arguments
+.IR x
+and
+.IR y
+specify the upper-left corner of the area to use and
+.IR width
+and
+.IR height
+specify the width and height of the area to use. If any of the argument is a
+negative integer, then
+.IR x
+and
+.IR y
+are replaced with 0, and
+.IR width
+and
+.IR height
+are replaced with the width and height of the source image respectively. If
+.IR width
+and
+.IR height
+are not both multiples of 16, the operation fails.
+.IP "\fBpalette\fP" 10
+Extract the palette.
+.IP "\fBqpic\fR \fIx\fR \fIy\fR \fIwidth\fR \fIheight\fR" 10
+Create a qpic header.
+.IP "\fBraw\fR \fIx\fR \fIy\fR \fIwidth\fR \fIheight\fR" 10
+Copy raw bytes.
+.IP "\fBfont\fR \fIx\fR \fIy\fR \fIwidth\fR \fIheight\fR \fIstartglyph\fR" 10
+Create a font from the image data.
+.P
+The sequences of characters
+.BR // ,
+.BR ;
+and
+.BR #
+introduce comments. When encountered other than between two
+.BR \(dq
+characters, they and the rest of the current logical line are ignored. This
+differs from original Qlumpy behavior where
+.BR ;
+sometimes played a syntactic role.
+
+.SS "Spray Creation"
+.P
+If the
+.BR \-s
+option was passed, then the utility creates a WAD file called
+.IR tempdecal.wad
+containing a single lump of type mipmap called
+.IR {LOGO
+generated from the input file as if by running the following Lumpy script with
+no operand passed, where
+.IR {input.bmp
+denotes the operand.
+.sp
+.RS 4
+.nf
+$DEST tempdecal.wad
+
+$LOADBMP {input.bmp
+{LOGO miptex -1 -1 -1 -1
+.fi
+.P
+.RE
+.P
+This is intended to create custom sprays.
+.SH "EXIT STATUS"
+The following exit values shall be returned:
+.IP "\00" 6
+The Lumpy script was executed without problems, or the 
+.IR tempdecal.wad
+file could be created from the given bitmap image.
+.IP >0 6
+An error occurred.
+.SH "CONSEQUENCES OF ERRORS"
+Default.
