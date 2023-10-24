@@ -225,6 +225,10 @@ public:
 
 private:
 	void count_color(std::int32_t x, std::int32_t y);
+
+	[[nodiscard]] constexpr std::tuple<float, float, float>
+	get_average_color() const noexcept;
+
 	unsigned char average_pixels();
 	unsigned char add_color(float red, float green, float blue);
 	int find_unused_color() const noexcept;
@@ -322,20 +326,27 @@ unsigned char mipmap_generator::add_color(float red, float green, float blue)
 	return x * x + y * y + z * z;
 }
 
-unsigned char mipmap_generator::average_pixels()
+constexpr std::tuple<float, float, float>
+mipmap_generator::get_average_color() const noexcept
 {
 	float red = 0.f;
 	float green = 0.f;
 	float blue = 0.f;
 	for (unsigned int i = 0; i < pixel_count; ++i) {
-		const auto c = static_cast<unsigned int>(pixel_mask[i]);
+		const unsigned int c = pixel_mask[i];
 		red += linear_palette[3 * c];
 		green += linear_palette[3 * c + 1];
-		blue += linear_palette.at(3 * c + 2);
+		blue += linear_palette[3 * c + 2];
 	}
-	red = red / static_cast<float>(pixel_count) + distortion_red;
-	green = green / static_cast<float>(pixel_count) + distortion_green;
-	blue = blue / static_cast<float>(pixel_count) + distortion_blue;
+	const float n = pixel_count;
+	return {red / n + distortion_red,
+	        green / n + distortion_green,
+	        blue / n + distortion_blue};
+}
+
+unsigned char mipmap_generator::average_pixels()
+{
+	const auto [red, green, blue] = get_average_color();
 
 	float best_distortion = 3.f;
 	int best_color = -1;
@@ -446,7 +457,7 @@ It put_lump_name(It it, std::string_view name)
 		throw std::logic_error(s.str());
 	}
 	const auto tr = [&loc](const char c) {
-		const auto l = std::tolower(c, loc);
+		const char l = std::tolower(c, loc);
 		return std::byte{static_cast<unsigned char>(l)};
 	};
 	it = std::transform(name.cbegin(), name.cend(), it, tr);

@@ -22,7 +22,7 @@ template<class N>
 	}
 	N acc = 0;
 	for (unsigned b = 0; b < sizeof (N); ++b)
-		acc |= static_cast<N>(buf[b]) << (CHAR_BIT * b);
+		acc |= N{buf[b]} << (CHAR_BIT * b);
 	return acc;
 }
 
